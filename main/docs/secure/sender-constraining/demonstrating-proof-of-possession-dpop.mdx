@@ -472,7 +472,10 @@ The client application:
 
 The Auth0 Authorization Server:
 
-* Validates the DPoP Proof JWT (like in [Step 4](#step-4-auth0-authorization-server-validates-the-dpop-proof-jwt)) and issues a new DPoP-bound access token.
+* Validates the DPoP Proof JWT (like in [Step 4](#step-4-auth0-authorization-server-validates-the-dpop-proof-jwt)) and verifies it matches the key the refresh token is bound to.
+* Issues a new access token. It's DPoP-bound only if the API enables DPoP. Check `token_type` in the response.
+
+Refresh tokens are bound per tenant, while access tokens are bound per API. For details, see [Access token and refresh token binding](/docs/secure/sender-constraining/configure-sender-constraining#access-token-and-refresh-token-binding).
 
 ## Important considerations
 
@@ -485,6 +488,7 @@ When implementing DPoP in your client applications, consider the following:
 * **Client types:** Use DPoP for public clients, such as Single Page Applications (SPAs) or mobile apps that cannot securely store a client secret. For <Tooltip tip="Confidential Client: A client (application) that can hold credentials securely by using a trusted backend server. Examples include a web application with a secure backend and a machine-to-machine (M2M) application." cta="View Glossary" href="/docs/glossary?term=confidential+clients">confidential clients</Tooltip>, such as backend services with client secrets, DPoP adds a layer of security, but they already have other sender-constraining mechanisms.
 * **Performance:** Because generating and signing DPoP Proof JWTs for every API call adds a small overhead, ensure your client application’s cryptographic operations are efficient.
 * **Key rotation:** Implement a strategy for rotating your DPoP key pairs for enhanced security. Make sure you use the same key pair for the same session.
+* **Send DPoP consistently:** Either send a DPoP proof on every request or none. If a client starts sending DPoP proofs and later stops, or switches key pairs, its existing bound tokens, including refresh tokens, stop working.
 * **Persistence:** For client applications that need to maintain a session and reuse DPoP-bound access tokens, such as long-lived SPAs, securely persist and retrieve the original generated key pair across application reloads. If a new key pair is generated or a different key pair is used, the DPoP-bound access token becomes invalid, as it is cryptographically tied to the public key of the original pair. You can persist the key pair, for example, in a browser's `IndexedDB` or a mobile app's secure storage.
 
 ## Learn more

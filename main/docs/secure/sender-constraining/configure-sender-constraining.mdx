@@ -49,6 +49,36 @@ The following table describes how access tokens are issued and whether they are 
 | Custom Audience (may contain Userinfo) | Yes | No | Not Issued | Not Issued | Not Issued |
 | Custom Audience (may contain Userinfo) | Yes | Yes | Not Issued | Issued, Sender-Constrained | Issued, Sender-Constrained |
 
+### Access token and refresh token binding
+
+Access tokens and refresh tokens are bound independently:
+
+| | Access tokens | Refresh tokens |
+| --- | --- | --- |
+| **Scope of the decision** | Per API (audience). Controlled by the resource server and client settings above. | Per tenant. Not configurable per API or per application. |
+| **Bound when** | The API allows or requires sender constraining, and the client sends a valid proof-of-possession. | The client sends a valid DPoP proof to `/token` when the refresh token is issued. |
+| **Enforced by** | The API that receives the access token. | Auth0, when the refresh token is exchanged. Refresh tokens are opaque, and Auth0 is the only audience that validates them. |
+
+As a result, a request to `/token` with a valid DPoP proof can return a refresh token that is bound and an access token that is not. This happens when the API you request a token for doesn't enable DPoP. In that case the response has `"token_type": "Bearer"`, and Auth0 still enforces the binding on the refresh token.
+
+<Callout icon="lightbulb" color="#0EA5E9" iconType="regular">
+
+Always read `token_type` from the `/token` response to decide how to call the API. Send `Authorization: DPoP <token>` with a DPoP proof if it is `DPoP`, and `Authorization: Bearer <token>` if it is `Bearer`. Don't assume from your own configuration.
+
+</Callout>
+
+#### Strict DPoP refresh token binding
+
+The `dpop_strict_refresh_token_binding` tenant setting controls whether Auth0 enforces refresh token binding for DPoP-bound refresh tokens. It defaults to `true` for new tenants. Existing tenants must turn it on to get this behavior.
+
+This setting affects refresh tokens only. It doesn't change whether access tokens are bound, and it doesn't make DPoP mandatory for applications that don't send it. To require DPoP, use the client and resource server settings described on this page. If DPoP is required and the client doesn't send a proof, the request fails.
+
+#### Mixing DPoP and non-DPoP clients on one tenant
+
+If an application doesn't require DPoP, it decides per request whether to send a DPoP proof. Web and mobile applications on the same tenant can adopt DPoP at different times.
+
+Once a client starts sending DPoP proofs, it must send a proof on every request to `/token` and to DPoP-protected APIs, and keep using the same key pair. If the client generates a new key pair or stops sending DPoP, tokens issued under the original key pair are no longer valid.
+
 ## Configure sender constraining for a client application
 
 When you require sender constraining for a client application, access tokens are constrained to that application. Auth0 verifies requests to ensure that only the application that requested the token can use it to access the associated resource.
